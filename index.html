@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Titanic Loss Playground</title>
+<title>Loss Playground (lmt-ai-10-loss)</title>
 <style>
   :root {
     --bg: #1a1a1b;
@@ -29,7 +29,10 @@
   }
   .wrap { max-width: 1100px; margin: 0 auto; }
   header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; }
-  header p { color: var(--muted); margin-top: 4px; max-width: 74ch; }
+  header .crumb { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+  header .crumb a { color: var(--muted); }
+  header .intro { color: var(--muted); margin-top: 8px; max-width: 80ch; }
+  header .intro a { color: var(--text); }
   .card {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -40,8 +43,50 @@
   .card .sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 10px; }
   canvas { width: 100%; height: auto; display: block; border-radius: 8px; background: #202022; }
 
+  /* tooltips (hover, keyboard focus, or tap) */
+  [data-tip] { position: relative; }
+  [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: min(280px, 78vw);
+    background: #141416;
+    color: var(--text);
+    border: 1px solid #4a4a52;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.45;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.12s;
+    z-index: 20;
+    pointer-events: none;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  }
+  [data-tip]:hover::after, [data-tip]:focus-visible::after, [data-tip].tip-open::after { opacity: 1; visibility: visible; }
+  [data-tip].tip-edge-left::after { left: 0; transform: none; }
+  [data-tip].tip-edge-right::after { left: auto; right: 0; transform: none; }
+  .info {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 17px; height: 17px; border-radius: 50%;
+    border: 1px solid #55555c; background: transparent; color: var(--muted);
+    font-size: 11px; font-family: inherit; line-height: 1; padding: 0;
+    cursor: help; vertical-align: 2px;
+  }
+  .info:hover, .info.tip-open { border-color: var(--accent); color: var(--text); }
+
   /* controls */
-  .controls-card { margin: 20px 0 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+  .controls-card { margin: 18px 0 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; }
+  .ctl-buttons { display: flex; gap: 8px; align-items: center; }
   .btn {
     background: var(--panel-2);
     border: 1px solid var(--border);
@@ -52,9 +97,19 @@
     font-size: 0.95rem;
   }
   .btn:hover { border-color: var(--accent); }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; min-width: 96px; }
-  .field { display: flex; flex-direction: column; gap: 2px; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; min-width: 100px; }
+  .btn.icon { padding: 8px 11px; display: inline-flex; align-items: center; }
+  .btn.icon svg { display: block; }
+  .epoch-box { display: flex; align-items: center; gap: 10px; padding-left: 18px; border-left: 1px solid var(--border); }
+  .epoch-box .num { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2.2ch; text-align: right; }
+  .epoch-box .meta { display: flex; flex-direction: column; line-height: 1.3; }
+  .epoch-box .lbl { color: var(--muted); font-size: 0.78rem; }
+  .epoch-box .status { font-size: 0.8rem; color: var(--point); min-height: 1.2em; }
+  .field { display: flex; flex-direction: column; gap: 3px; }
   .field label { color: var(--muted); font-size: 0.78rem; }
+  .field label .val { color: var(--text); font-variant-numeric: tabular-nums; }
+  .field-init { margin-left: auto; }
+  input[type="range"] { width: 150px; accent-color: var(--accent); }
   select {
     background: var(--panel-2);
     border: 1px solid var(--border);
@@ -63,26 +118,16 @@
     padding: 6px 8px;
     font-size: 0.92rem;
   }
-  .epoch-readout { margin-left: auto; text-align: right; }
-  .epoch-readout .num { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .epoch-readout .lbl { color: var(--muted); font-size: 0.78rem; }
-  .done-note { color: var(--point); font-size: 0.85rem; }
 
-  /* layout */
-  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; }
-  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-  .col { display: flex; flex-direction: column; gap: 16px; }
-  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 0.88rem; color: var(--muted); }
+  /* rows */
+  .charts-row, .ref-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .learn-row { display: grid; grid-template-columns: 1.25fr 1fr; gap: 16px; margin-top: 16px; align-items: start; }
+  @media (max-width: 900px) { .charts-row, .ref-row, .learn-row { grid-template-columns: 1fr; } }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 0.88rem; color: var(--muted); }
+  .legend .val { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
-  .loss-pair { display: flex; gap: 12px; }
-  .loss-pair > div { flex: 1; min-width: 0; }
-  .loss-pair .mini-title { font-size: 0.82rem; color: var(--muted); margin-bottom: 6px; }
-  @media (max-width: 560px) { .loss-pair { flex-direction: column; } }
-
-  /* scoreboard */
-  .state .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
-  .state .row:last-child { border-bottom: none; }
-  .state .row .val { font-weight: 700; }
+  .dot.ce { background: var(--ce); }
+  .dot.mse { background: var(--mse); }
 
   /* weights */
   .wrow { margin: 10px 0; }
@@ -92,9 +137,7 @@
   .wbar { position: absolute; top: 2px; bottom: 2px; border-radius: 4px; transition: left 0.15s linear, width 0.15s linear; }
 
   /* passengers */
-  .people { margin-top: 16px; }
-  .people-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
-  @media (max-width: 900px) { .people-grid { grid-template-columns: repeat(2, 1fr); } }
+  .people-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 12px; }
   @media (max-width: 560px) { .people-grid { grid-template-columns: 1fr; } }
   .person {
     background: var(--panel-2);
@@ -118,126 +161,141 @@
   .pbar.mse { background: var(--mse); }
   .people .hint { color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
 
-  /* how it works */
-  .how { margin-top: 16px; }
-  .how summary { cursor: pointer; font-weight: 600; color: var(--text); }
-  .how .formula {
+  /* bottom reference material */
+  .ref-label { margin: 26px 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78rem; }
+  .ref-row p { color: var(--muted); font-size: 0.92rem; margin: 8px 0; }
+  .formula {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     background: var(--panel-2);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 10px 12px;
-    margin: 10px 0;
-    font-size: 0.92rem;
+    margin: 10px 0 6px;
+    font-size: 0.9rem;
     overflow-x: auto;
   }
-  .how p { color: var(--muted); font-size: 0.95rem; margin: 8px 0; max-width: 80ch; }
+  .formula.f-ce { border-left: 3px solid var(--ce); }
+  .formula.f-mse { border-left: 3px solid var(--mse); }
+  .formula mark { background: rgba(240, 163, 94, 0.22); color: var(--mse); padding: 0 4px; border-radius: 4px; font-weight: 600; }
+  .fnote { color: var(--muted); font-size: 0.84rem; margin: 0 0 10px; }
+  .pipe { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0; font-size: 0.84rem; }
+  .pipe .pbx { background: var(--panel-2); border: 1px solid #4a4a52; border-radius: 8px; padding: 4px 9px; }
+  .pipe .pbx.out { border-color: var(--accent); }
+  .pipe .arrow { color: var(--muted); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Titanic Loss Playground</h1>
-    <p>One tiny model — a single sigmoid neuron — learns to predict who survived the Titanic, using 160 real passengers.
-       We train it twice on exactly the same data: once scoring its mistakes with the <strong style="color:var(--mse)">quadratic loss (MSE)</strong>
-       and once with <strong style="color:var(--ce)">cross-entropy</strong>. Press play and watch which one learns faster — and why.</p>
+    <h1>Loss Playground</h1>
+    <div class="crumb">2 MA LMT Artificial Intelligence, Class 10 (loss functions) &middot; <a href="https://github.com/klodzikowski/lmt-ai-10-loss" rel="noopener">lmt-ai-10-loss</a></div>
+    <p class="intro">One tiny model (a single sigmoid neuron) learns to predict who survived the Titanic, using 160 real passengers from the
+      <a href="https://www.kaggle.com/c/titanic" rel="noopener">public Titanic dataset</a>
+      <button type="button" class="info tip-edge-left" aria-label="About the dataset" data-tip="160 of the 891 passengers in the public Kaggle/Vanderbilt Titanic training set, sampled so that survival rates by sex and class match the full data. Fields: name, sex, age, ticket class, fare, survived. Every number on screen is computed live from these records.">i</button>.
+      We train it twice on exactly the same data: once scoring its mistakes with the <strong style="color:var(--mse)">quadratic loss (MSE)</strong>
+      and once with <strong style="color:var(--ce)">cross-entropy</strong>. Both models start confidently wrong. Press play and watch
+      cross-entropy recover in about 20 epochs while the quadratic model stays stuck for hundreds.</p>
   </header>
 
   <div class="card controls-card">
-    <button class="btn primary" id="playBtn">&#9654; Play</button>
-    <button class="btn" id="stepBtn">Step 1 epoch</button>
-    <button class="btn" id="resetBtn">Start again</button>
-    <div class="field">
-      <label for="initSelect">Where does the model start?</label>
-      <select id="initSelect">
-        <option value="neutral">Neutral — no opinion yet (50/50 on everyone)</option>
-        <option value="wrong">Confidently wrong — believes the opposite of the truth</option>
-      </select>
+    <div class="ctl-buttons">
+      <button class="btn primary" id="playBtn">&#9654; Play</button>
+      <button class="btn" id="stepBtn">Step 1 epoch</button>
+      <button class="btn icon" id="resetBtn" aria-label="Restart from epoch 0" data-tip="Restart from epoch 0">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M5 5h2.4v14H5zM20 5v14L9.5 12z"/></svg>
+      </button>
     </div>
-    <div class="field">
-      <label for="speedSelect">Speed</label>
-      <select id="speedSelect">
-        <option value="2">Slow (2 epochs/s)</option>
-        <option value="10" selected>Normal (10 epochs/s)</option>
-        <option value="40">Fast (40 epochs/s)</option>
-      </select>
-    </div>
-    <div class="epoch-readout">
+    <div class="epoch-box">
       <div class="num" id="epochNum">0</div>
-      <div class="lbl">epochs — one epoch = one look<br>at all 160 passengers</div>
-    </div>
-  </div>
-
-  <div class="layout">
-    <div class="col">
-      <div class="card">
-        <h2>Accuracy</h2>
-        <div class="sub">How many of the 160 passengers each model currently classifies correctly (prediction over 50% counts as &ldquo;survived&rdquo;). The dashed line is the lazy guess &ldquo;nobody survives&rdquo; — a useful model must beat it.</div>
-        <canvas id="accChart" width="640" height="300" aria-label="Accuracy over training epochs"></canvas>
-        <div class="legend">
-          <span><span class="dot" style="background:var(--ce)"></span>Cross-entropy model</span>
-          <span><span class="dot" style="background:var(--mse)"></span>Quadratic (MSE) model</span>
-          <span><span class="dot" style="background:#8a8a92"></span>Guessing &ldquo;nobody survives&rdquo; (62%)</span>
+      <div class="meta">
+        <div class="lbl">epoch of 400
+          <button type="button" class="info" aria-label="What is an epoch?" data-tip="One epoch = one look at all 160 passengers, followed by one small adjustment of the weights. Training stops at 400 epochs.">i</button>
         </div>
-      </div>
-
-      <div class="card">
-        <h2>Loss — the error score each model shrinks as it learns</h2>
-        <div class="sub">Lower is better. The two losses measure error in different units, so compare the <em>shapes</em> of the curves, not their heights.</div>
-        <div class="loss-pair">
-          <div>
-            <div class="mini-title"><span class="dot" style="background:var(--ce)"></span>Cross-entropy loss</div>
-            <canvas id="ceLossChart" width="300" height="200" aria-label="Cross-entropy loss over epochs"></canvas>
-          </div>
-          <div>
-            <div class="mini-title"><span class="dot" style="background:var(--mse)"></span>Quadratic (MSE) loss</div>
-            <canvas id="mseLossChart" width="300" height="200" aria-label="Quadratic loss over epochs"></canvas>
-          </div>
-        </div>
+        <div class="status" id="statusVal">ready</div>
       </div>
     </div>
+    <div class="field">
+      <label for="speedSlider">Speed <span class="val" id="speedVal">10</span> epochs/s</label>
+      <input type="range" id="speedSlider" min="1" max="60" step="1" value="10" aria-label="Training speed in epochs per second">
+    </div>
+    <div class="field field-init">
+      <label for="initSelect">Starting point
+        <button type="button" class="info tip-edge-right" aria-label="About the starting points" data-tip="Confidently wrong: the model starts believing the opposite of the truth (men survive, women do not; third class outranks first). Both losses face the same confident mistakes, which exposes how differently they recover. Neutral: no opinion yet (50/50 on everyone); from there both models converge to nearly the same result, so the comparison is undramatic.">i</button>
+      </label>
+      <select id="initSelect">
+        <option value="wrong" selected>Confidently wrong (the dramatic comparison)</option>
+        <option value="neutral">Neutral (no opinion yet: 50/50 on everyone)</option>
+      </select>
+    </div>
+  </div>
 
-    <div class="col">
-      <div class="card state">
-        <h2>Scoreboard</h2>
-        <div class="row"><span><span class="dot" style="background:var(--ce)"></span>Cross-entropy accuracy</span><span class="val" id="ceAcc">–</span></div>
-        <div class="row"><span><span class="dot" style="background:var(--mse)"></span>Quadratic accuracy</span><span class="val" id="mseAcc">–</span></div>
-        <div class="row"><span>Cross-entropy loss</span><span class="val" id="ceLoss">–</span></div>
-        <div class="row"><span>Quadratic loss</span><span class="val" id="mseLoss">–</span></div>
-        <div class="row"><span>Status</span><span class="val" id="statusVal">ready</span></div>
+  <div class="charts-row">
+    <div class="card">
+      <h2>Loss (the error score each model shrinks)</h2>
+      <div class="sub">The two losses measure error in different units, so each curve is shown as a share of its own starting value (both begin at 100%). Compare the <em>shapes</em> (how fast each falls), not the heights.</div>
+      <canvas id="lossChart" width="640" height="320" aria-label="Both losses over training epochs, each as a share of its starting value"></canvas>
+      <div class="legend">
+        <span><span class="dot ce"></span>Cross-entropy: <span class="val" id="ceLossShare">100%</span> of its start</span>
+        <span><span class="dot mse"></span>Quadratic (MSE): <span class="val" id="mseLossShare">100%</span> of its start</span>
       </div>
-
-      <div class="card">
-        <h2>Why cross-entropy learns faster</h2>
-        <div class="sub">Take one passenger who <em>survived</em>. The x-axis shows what the model currently predicts for them; the y-axis shows how hard that mistake pushes the weights (the size of the learning signal). On the far left the model is <em>confidently wrong</em> — cross-entropy pushes hardest exactly there, while the quadratic signal fades to almost nothing, so the MSE model stays stuck.</div>
-        <canvas id="gradChart" width="300" height="230" aria-label="Learning signal versus predicted probability"></canvas>
-      </div>
-
-      <div class="card">
-        <h2>What each model has learned</h2>
-        <div class="sub">The four weights of each neuron. A bar to the right pushes the prediction towards &ldquo;survived&rdquo;, to the left towards &ldquo;did not survive&rdquo;. Watch both models discover the same rule — women, the young, and the upper classes first — with the quadratic model getting there more slowly. (Fare repeats much of what class already says, so its bar can drift the other way; the model leans on class instead.)</div>
-        <div id="weightRows"></div>
+    </div>
+    <div class="card">
+      <h2>Accuracy</h2>
+      <div class="sub">The share of the 160 passengers each model currently classifies correctly (a prediction over 50% counts as &ldquo;survived&rdquo;).</div>
+      <canvas id="accChart" width="640" height="320" aria-label="Accuracy over training epochs"></canvas>
+      <div class="legend">
+        <span><span class="dot ce"></span>Cross-entropy: <span class="val" id="ceAcc">&ndash;</span></span>
+        <span><span class="dot mse"></span>Quadratic (MSE): <span class="val" id="mseAcc">&ndash;</span></span>
+        <span><span class="dot" style="background:#8a8a92"></span>&ldquo;Nobody survives&rdquo; (<span id="baselinePct">62%</span>)
+          <button type="button" class="info tip-edge-right" aria-label="About the dashed baseline" data-tip="Predicting &ldquo;did not survive&rdquo; for everyone scores 62% with zero understanding. A useful model must beat this dashed line.">i</button>
+        </span>
       </div>
     </div>
   </div>
 
-  <div class="card people">
-    <h2>Six real passengers, watched live</h2>
-    <div class="sub">Each bar is the model&rsquo;s predicted chance that this passenger survives; the notch in the middle is the 50% decision line. A tick means the model currently has this passenger on the correct side of the line.</div>
-    <div class="people-grid" id="peopleGrid"></div>
-    <div class="hint">Note Miss Helen Allison: a two-year-old in first class who did <em>not</em> survive. Every reasonable model gets her wrong — real data always has exceptions, and 100% accuracy is not the goal.</div>
+  <div class="learn-row">
+    <div class="card people">
+      <h2>Four real passengers, watched live</h2>
+      <div class="sub">Each bar is the model&rsquo;s predicted chance that this passenger survives; the notch in the middle is the 50% decision line. A tick means the model currently has this passenger on the correct side of the line.</div>
+      <div class="people-grid" id="peopleGrid"></div>
+      <div class="hint">Note Miss Helen Allison: a two-year-old in first class who did <em>not</em> survive. Every reasonable model gets her wrong (real data always has exceptions, and 100% accuracy is not the goal).</div>
+    </div>
+    <div class="card weights">
+      <h2>What each model has learned</h2>
+      <div class="sub">The four weights of each neuron. A bar to the right pushes the prediction towards &ldquo;survived&rdquo;, to the left towards &ldquo;did not survive&rdquo;. Watch both models discover the same rule (women, the young and the upper classes first), with the quadratic model getting there more slowly.</div>
+      <div class="legend" style="margin: 0 0 4px;">
+        <span><span class="dot ce"></span>Cross-entropy</span>
+        <span><span class="dot mse"></span>Quadratic (MSE)</span>
+      </div>
+      <div id="weightRows"></div>
+    </div>
   </div>
 
-  <details class="how card">
-    <summary>How the maths works (for the curious)</summary>
-    <p>The model is a single neuron, i.e. logistic regression. For each passenger it combines four facts — sex, age, ticket class, fare — into one number, then squashes it into a probability with the sigmoid:</p>
-    <div class="formula">z = w<sub>1</sub>&middot;female + w<sub>2</sub>&middot;age + w<sub>3</sub>&middot;class + w<sub>4</sub>&middot;fare + b &nbsp;&nbsp;&nbsp; p = 1 / (1 + e<sup>&minus;z</sup>)</div>
-    <p>Training is plain gradient descent (learning rate 0.5, full batch): after each epoch, every weight moves a small step in the direction that reduces the loss. The only difference between the two models is the loss being reduced:</p>
-    <div class="formula">Quadratic (MSE):&nbsp; L = (p &minus; y)&sup2; &nbsp;&nbsp;&rarr;&nbsp; push on z = 2(p &minus; y)&middot;p&middot;(1 &minus; p)</div>
-    <div class="formula">Cross-entropy:&nbsp; L = &minus;[y&middot;ln p + (1 &minus; y)&middot;ln(1 &minus; p)] &nbsp;&nbsp;&rarr;&nbsp; push on z = p &minus; y</div>
-    <p>The quadratic push carries the extra factor p&middot;(1 &minus; p), which is nearly zero whenever p is near 0 or 1. So when the model is confidently wrong (say p = 0.01 for someone who survived), the quadratic gradient almost vanishes and learning stalls. Cross-entropy&rsquo;s push is simply p &minus; y — biggest exactly when the model is most wrong. That is why cross-entropy is the standard loss for classification.</p>
-    <p>Ages, classes and (log-)fares are standardised before training, which is why one learning rate works for all four weights. All numbers you see are computed live in your browser — nothing is pre-recorded.</p>
-  </details>
+  <div class="ref-label">Reference notes (read after playing)</div>
+  <div class="ref-row">
+    <div class="card">
+      <h2>Why cross-entropy learns faster</h2>
+      <div class="sub">Take one passenger who <em>survived</em>. The x-axis is what the model currently predicts for them; the height is how hard that mistake pushes the weights. On the far left the model is <em>confidently wrong</em>: cross-entropy pushes hardest exactly there, while the quadratic signal fades to almost nothing, so the MSE model stays stuck.</div>
+      <canvas id="gradChart" width="640" height="340" aria-label="Learning signal versus predicted probability"></canvas>
+    </div>
+    <div class="card">
+      <h2>The maths (for the curious)</h2>
+      <p>The model is a single neuron (logistic regression). For each passenger it combines four facts into one number z, then squashes it into a probability p with the sigmoid:</p>
+      <div class="pipe" aria-hidden="true">
+        <span class="pbx">female?</span><span class="pbx">age</span><span class="pbx">class</span><span class="pbx">fare</span>
+        <span class="arrow">&rarr;</span><span class="pbx">weighted sum z</span>
+        <span class="arrow">&rarr;</span><span class="pbx">sigmoid</span>
+        <span class="arrow">&rarr;</span><span class="pbx out">p = chance of survival</span>
+      </div>
+      <div class="formula">z = w<sub>1</sub>&middot;female + w<sub>2</sub>&middot;age + w<sub>3</sub>&middot;class + w<sub>4</sub>&middot;fare + b &nbsp;&nbsp;&nbsp; p = 1 / (1 + e<sup>&minus;z</sup>)</div>
+      <p>Training is plain gradient descent (learning rate 0.5, full batch): after each epoch every weight moves a small step in the direction that reduces the loss. The only difference between the two models is the loss being reduced, and therefore the push each mistake sends back:</p>
+      <div class="formula f-mse">Quadratic (MSE): L = (p &minus; y)&sup2; &nbsp;&rarr;&nbsp; push on z = 2(p &minus; y)&middot;<mark>p&middot;(1 &minus; p)</mark></div>
+      <div class="fnote">The marked factor is nearly zero whenever p is near 0 or 1, including when the model is confidently <em>wrong</em> (exactly when it most needs correcting), so learning stalls.</div>
+      <div class="formula f-ce">Cross-entropy: L = &minus;[y&middot;ln p + (1 &minus; y)&middot;ln(1 &minus; p)] &nbsp;&rarr;&nbsp; push on z = p &minus; y</div>
+      <div class="fnote">Biggest exactly when the model is most wrong. That is why cross-entropy is the standard loss for classification.</div>
+      <p>Ages, classes and (log-)fares are standardised before training, which is why one learning rate suits all four weights. Every number on screen is computed live in your browser (nothing is pre-recorded).</p>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -421,7 +479,7 @@
     wrong:   { w: [-4, 0, 2, -2], b: 0 },
   };
 
-  // Features: isFemale, age, class number, log(fare+1) — each standardised
+  // Features: isFemale, age, class number, log(fare+1), each standardised
   // (mean 0, spread 1) so one learning rate suits all four weights.
   function buildFeatures(passengers) {
     const raw = passengers.map(p => [p[1], p[2], p[3], Math.log(p[4] + 1)]);
@@ -487,23 +545,22 @@
   const BASELINE = 1 - y.reduce((s, v) => s + v, 0) / y.length; // guess "nobody survives"
 
   const FEATURED_NAMES = [
-    'Mrs. Norman Chambers',     // 1st-class woman, survived — easy case
-    'Mr. William Saundercock',  // 3rd-class young man, died — easy case
-    'Miss. Laina Heikkinen',    // 3rd-class woman, survived — borderline
-    'Mr. Harry Anderson',       // 1st-class man, survived — against the odds
-    'Master. Edmond Navratil',  // 2-year-old boy in 2nd class, survived
-    'Miss. Helen Allison',      // 2-year-old girl in 1st class, died — the exception
+    'Mrs. Norman Chambers',     // 1st-class woman, survived (easy case)
+    'Mr. William Saundercock',  // 3rd-class young man, died (easy case)
+    'Miss. Laina Heikkinen',    // 3rd-class woman, survived (borderline)
+    'Miss. Helen Allison',      // 2-year-old girl in 1st class, died (the exception)
   ];
   const featured = FEATURED_NAMES.map(name => {
     const i = PASSENGERS.findIndex(p => p[0] === name);
     return { i, p: PASSENGERS[i] };
   });
 
+  // [label, optional tooltip]
   const FEATURE_LABELS = [
-    'Female passenger',
-    'Older age',
-    'Class number (1st → 3rd)',
-    'Fare paid',
+    ['Female passenger', ''],
+    ['Older age', ''],
+    ['Class number (1st&rarr;3rd)', ''],
+    ['Fare paid', 'Fare repeats much of what ticket class already says, so this bar can drift the other way; the model leans on class instead.'],
   ];
 
   // ---- state ----
@@ -549,10 +606,13 @@
   const stepBtn = document.getElementById('stepBtn');
   const resetBtn = document.getElementById('resetBtn');
   const initSelect = document.getElementById('initSelect');
-  const speedSelect = document.getElementById('speedSelect');
+  const speedSlider = document.getElementById('speedSlider');
+  const speedVal = document.getElementById('speedVal');
   const epochNum = document.getElementById('epochNum');
   const peopleGrid = document.getElementById('peopleGrid');
   const weightRows = document.getElementById('weightRows');
+
+  document.getElementById('baselinePct').textContent = Math.round(BASELINE * 100) + '%';
 
   function getCss(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -563,9 +623,12 @@
     const dpr = window.devicePixelRatio || 1;
     const cssWidth = canvas.clientWidth || 640;
     const cssHeight = Math.round(cssWidth * aspect);
-    canvas.width = cssWidth * dpr;
-    canvas.height = cssHeight * dpr;
-    canvas.style.height = cssHeight + 'px';
+    // only reallocate the bitmap when the size actually changes (cheap redraws)
+    if (canvas.width !== cssWidth * dpr || canvas.height !== cssHeight * dpr) {
+      canvas.width = cssWidth * dpr;
+      canvas.height = cssHeight * dpr;
+      canvas.style.height = cssHeight + 'px';
+    }
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return { ctx, w: cssWidth, h: cssHeight };
@@ -600,7 +663,7 @@
     return ticks;
   }
 
-  function plotSeries(ctx, px, py, series, colour, xMax, yMin, yMax) {
+  function plotSeries(ctx, px, py, series, colour, yMin, yMax) {
     ctx.strokeStyle = colour;
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -622,38 +685,47 @@
 
   function drawAccChart() {
     const canvas = document.getElementById('accChart');
-    const { ctx, w, h } = setupCanvas(canvas, 0.45);
-    const pad = { l: 38, r: 12, t: 10, b: 26 };
+    const { ctx, w, h } = setupCanvas(canvas, 0.55);
+    const pad = { l: 38, r: 12, t: 10, b: 34 };
     const xMax = xAxisMax();
     const { px, py } = drawFrame(ctx, w, h, pad, xMax, 0, 100,
-      niceTicks(xMax, 8), [0, 25, 50, 75, 100], t => t + '%');
+      niceTicks(xMax, 6), [0, 25, 50, 75, 100], t => t + '%');
     // baseline: guess "nobody survives"
     ctx.strokeStyle = '#8a8a92';
     ctx.setLineDash([5, 5]);
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(px(0), py(BASELINE * 100)); ctx.lineTo(px(xMax), py(BASELINE * 100)); ctx.stroke();
     ctx.setLineDash([]);
-    plotSeries(ctx, px, py, hist.mseAcc, getCss('--mse'), xMax, 0, 100);
-    plotSeries(ctx, px, py, hist.ceAcc, getCss('--ce'), xMax, 0, 100);
+    plotSeries(ctx, px, py, hist.mseAcc, getCss('--mse'), 0, 100);
+    plotSeries(ctx, px, py, hist.ceAcc, getCss('--ce'), 0, 100);
     ctx.fillStyle = '#8a8a92';
     ctx.font = '11px sans-serif';
     ctx.fillText('epochs', w - pad.r - 40, h - 6);
   }
 
-  function drawLossChart(canvasId, series, colour) {
-    const canvas = document.getElementById(canvasId);
-    const { ctx, w, h } = setupCanvas(canvas, 0.66);
-    const pad = { l: 36, r: 10, t: 10, b: 24 };
+  // Both losses on one chart: each is plotted as a share of its own starting
+  // value (100% at epoch 0), so the shapes are directly comparable even though
+  // the raw losses live on different scales.
+  function drawLossChart() {
+    const canvas = document.getElementById('lossChart');
+    const { ctx, w, h } = setupCanvas(canvas, 0.55);
+    const pad = { l: 42, r: 12, t: 10, b: 34 };
     const xMax = xAxisMax();
-    const yMax = Math.max(...series) * 1.08 || 1;
+    const ceShare = hist.ceLoss.map(v => 100 * v / hist.ceLoss[0]);
+    const mseShare = hist.mseLoss.map(v => 100 * v / hist.mseLoss[0]);
+    const yMax = Math.max(100, ...ceShare, ...mseShare) * 1.02;
     const { px, py } = drawFrame(ctx, w, h, pad, xMax, 0, yMax,
-      niceTicks(xMax, 5), niceTicks(yMax, 4), t => String(t));
-    plotSeries(ctx, px, py, series, colour, xMax, 0, yMax);
+      niceTicks(xMax, 6), [0, 25, 50, 75, 100], t => t + '%');
+    plotSeries(ctx, px, py, mseShare, getCss('--mse'), 0, yMax);
+    plotSeries(ctx, px, py, ceShare, getCss('--ce'), 0, yMax);
+    ctx.fillStyle = '#8a8a92';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('epochs', w - pad.r - 40, h - 6);
   }
 
   function drawGradChart() {
     const canvas = document.getElementById('gradChart');
-    const { ctx, w, h } = setupCanvas(canvas, 0.76);
+    const { ctx, w, h } = setupCanvas(canvas, 0.55);
     const pad = { l: 34, r: 10, t: 20, b: 34 };
     const px = v => pad.l + v * (w - pad.l - pad.r);         // p in 0..1
     const py = v => h - pad.b - v * (h - pad.t - pad.b);      // signal in 0..1
@@ -743,8 +815,10 @@
 
   // ---- weights ----
   function buildWeights() {
-    weightRows.innerHTML = FEATURE_LABELS.map((lbl, j) =>
-      '<div class="wrow"><div class="wlabel">' + lbl + '</div>' +
+    weightRows.innerHTML = FEATURE_LABELS.map((f, j) =>
+      '<div class="wrow"><div class="wlabel">' + f[0] +
+      (f[1] ? ' <button type="button" class="info" aria-label="More about this weight" data-tip="' + f[1] + '">i</button>' : '') +
+      '</div>' +
       '<div class="wbar-track"><div class="wbar" id="wb-ce-' + j + '" style="background:var(--ce)"></div></div>' +
       '<div class="wbar-track"><div class="wbar" id="wb-mse-' + j + '" style="background:var(--mse)"></div></div></div>'
     ).join('');
@@ -764,30 +838,46 @@
   }
 
   // ---- render everything ----
+  function fmtShare(v) { return (v >= 9.95 ? Math.round(v) : v.toFixed(1)) + '%'; }
+
+  function renderStatus() {
+    document.getElementById('statusVal').textContent =
+      finished ? 'finished (' + MAX_EPOCHS + ' epochs)' : playing ? 'training…' : epoch === 0 ? 'ready' : 'paused';
+  }
+
   function render() {
     epochNum.textContent = String(epoch);
     document.getElementById('ceAcc').textContent = hist.ceAcc[epoch].toFixed(1) + '%';
     document.getElementById('mseAcc').textContent = hist.mseAcc[epoch].toFixed(1) + '%';
-    document.getElementById('ceLoss').textContent = hist.ceLoss[epoch].toFixed(4);
-    document.getElementById('mseLoss').textContent = hist.mseLoss[epoch].toFixed(4);
-    document.getElementById('statusVal').textContent =
-      finished ? 'finished (' + MAX_EPOCHS + ' epochs)' : playing ? 'training…' : epoch === 0 ? 'ready' : 'paused';
+    const ceShareEl = document.getElementById('ceLossShare');
+    const mseShareEl = document.getElementById('mseLossShare');
+    ceShareEl.textContent = fmtShare(100 * hist.ceLoss[epoch] / hist.ceLoss[0]);
+    mseShareEl.textContent = fmtShare(100 * hist.mseLoss[epoch] / hist.mseLoss[0]);
+    ceShareEl.title = 'raw loss ' + hist.ceLoss[epoch].toFixed(4);
+    mseShareEl.title = 'raw loss ' + hist.mseLoss[epoch].toFixed(4);
+    renderStatus();
+    drawLossChart();
     drawAccChart();
-    drawLossChart('ceLossChart', hist.ceLoss, getCss('--ce'));
-    drawLossChart('mseLossChart', hist.mseLoss, getCss('--mse'));
     renderPeople();
     renderWeights();
   }
 
   // ---- play loop ----
-  let timer = null, carry = 0;
+  let timer = null, carry = 0, lastTick = 0;
   const TICK_MS = 50;
   function setPlaying(on) {
     playing = on && !finished;
     playBtn.innerHTML = playing ? '&#10074;&#10074; Pause' : '&#9654; Play';
+    renderStatus();
     if (playing && !timer) {
+      lastTick = performance.now();
       timer = setInterval(() => {
-        carry += (+speedSelect.value) * TICK_MS / 1000;
+        // use real elapsed time so the speed stays true even if the browser
+        // throttles timers; cap it so a sleeping tab does not leap ahead
+        const now = performance.now();
+        const dt = Math.min(1000, now - lastTick);
+        lastTick = now;
+        carry += (+speedSlider.value) * dt / 1000;
         const k = Math.floor(carry);
         if (k > 0) { carry -= k; doEpochs(k); }
       }, TICK_MS);
@@ -803,13 +893,23 @@
   stepBtn.addEventListener('click', () => { setPlaying(false); doEpochs(1); });
   resetBtn.addEventListener('click', () => { setPlaying(false); reset(); });
   initSelect.addEventListener('change', () => { setPlaying(false); reset(); });
-  window.addEventListener('resize', render);
+  speedSlider.addEventListener('input', () => { speedVal.textContent = speedSlider.value; });
+  window.addEventListener('resize', () => { render(); drawGradChart(); });
+
+  // tap-to-toggle for the ⓘ tooltips (touch devices have no hover)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.info');
+    document.querySelectorAll('.info.tip-open').forEach(el => { if (el !== btn) el.classList.remove('tip-open'); });
+    if (btn) btn.classList.toggle('tip-open');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.info.tip-open').forEach(el => el.classList.remove('tip-open'));
+  });
 
   buildPeople();
   buildWeights();
   reset();
   drawGradChart();
-  window.addEventListener('resize', drawGradChart);
 })();
 </script>
 </body>
