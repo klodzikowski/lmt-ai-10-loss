@@ -29,10 +29,7 @@
   }
   .wrap { max-width: 1100px; margin: 0 auto; }
   header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; }
-  header .crumb { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
-  header .crumb a { color: var(--muted); }
-  header .intro { color: var(--muted); margin-top: 8px; max-width: 80ch; }
-  header .intro a { color: var(--text); }
+  header .course-id { color: var(--muted); font-size: 0.82rem; margin-top: 3px; }
   .card {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -64,7 +61,7 @@
     text-align: left;
     text-transform: none;
     letter-spacing: normal;
-    white-space: normal;
+    white-space: pre-line;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.12s;
@@ -75,6 +72,7 @@
   [data-tip]:hover::after, [data-tip]:focus-visible::after, [data-tip].tip-open::after { opacity: 1; visibility: visible; }
   [data-tip].tip-edge-left::after { left: 0; transform: none; }
   [data-tip].tip-edge-right::after { left: auto; right: 0; transform: none; }
+  [data-tip].tip-below::after { bottom: auto; top: calc(100% + 8px); }
   .info {
     display: inline-flex; align-items: center; justify-content: center;
     width: 17px; height: 17px; border-radius: 50%;
@@ -97,6 +95,8 @@
     font-size: 0.95rem;
   }
   .btn:hover { border-color: var(--accent); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn:disabled:hover { border-color: var(--border); }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; min-width: 100px; }
   .btn.icon { padding: 8px 11px; display: inline-flex; align-items: center; }
   .btn.icon svg { display: block; }
@@ -120,9 +120,9 @@
   }
 
   /* rows */
-  .charts-row, .ref-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .learn-row { display: grid; grid-template-columns: 1.25fr 1fr; gap: 16px; margin-top: 16px; align-items: start; }
-  @media (max-width: 900px) { .charts-row, .ref-row, .learn-row { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .charts-row, .learn-row { grid-template-columns: 1fr; } }
   .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 0.88rem; color: var(--muted); }
   .legend .val { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
@@ -163,7 +163,27 @@
 
   /* bottom reference material */
   .ref-label { margin: 26px 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78rem; }
-  .ref-row p { color: var(--muted); font-size: 0.92rem; margin: 8px 0; }
+  #gradChart { max-width: 620px; margin: 6px auto 0; }
+  .maths-body p { color: var(--muted); font-size: 0.92rem; margin: 8px 0; }
+
+  /* collapsible maths drawer */
+  .maths-drawer { margin-top: 18px; border-top: 1px solid var(--border); }
+  .maths-drawer > summary {
+    cursor: pointer; list-style: none;
+    display: flex; align-items: center; gap: 9px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+    font-size: 0.9rem; font-weight: 600; padding: 12px 0 4px;
+  }
+  .maths-drawer > summary::-webkit-details-marker { display: none; }
+  .maths-drawer > summary::before {
+    content: ""; flex: none;
+    border-left: 6px solid currentColor;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    transition: transform 0.15s;
+  }
+  .maths-drawer[open] > summary::before { transform: rotate(90deg); }
+  .maths-drawer > summary:hover { color: var(--text); }
   .formula {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     background: var(--panel-2);
@@ -188,21 +208,20 @@
 <div class="wrap">
   <header>
     <h1>Loss Playground</h1>
-    <div class="crumb">2 MA LMT Artificial Intelligence, Class 10 (loss functions) &middot; <a href="https://github.com/klodzikowski/lmt-ai-10-loss" rel="noopener">lmt-ai-10-loss</a></div>
-    <p class="intro">One tiny model (a single sigmoid neuron) learns to predict who survived the Titanic, using 160 real passengers from the
-      <a href="https://www.kaggle.com/c/titanic" rel="noopener">public Titanic dataset</a>
-      <button type="button" class="info tip-edge-left" aria-label="About the dataset" data-tip="160 of the 891 passengers in the public Kaggle/Vanderbilt Titanic training set, sampled so that survival rates by sex and class match the full data. Fields: name, sex, age, ticket class, fare, survived. Every number on screen is computed live from these records.">i</button>.
-      We train it twice on exactly the same data: once scoring its mistakes with the <strong style="color:var(--mse)">quadratic loss (MSE)</strong>
-      and once with <strong style="color:var(--ce)">cross-entropy</strong>. Both models start confidently wrong. Press play and watch
-      cross-entropy recover in about 20 epochs while the quadratic model stays stuck for hundreds.</p>
+    <div class="course-id">2MA LMT AI &middot; Class 10: Neural networks 3 (loss functions)</div>
   </header>
 
   <div class="card controls-card">
     <div class="ctl-buttons">
       <button class="btn primary" id="playBtn">&#9654; Play</button>
-      <button class="btn" id="stepBtn">Step 1 epoch</button>
       <button class="btn icon" id="resetBtn" aria-label="Restart from epoch 0" data-tip="Restart from epoch 0">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M5 5h2.4v14H5zM20 5v14L9.5 12z"/></svg>
+      </button>
+      <button class="btn icon" id="stepBackBtn" aria-label="Step back one epoch" data-tip="Step back one epoch">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M15 5v14L4 12z"/></svg>
+      </button>
+      <button class="btn icon" id="stepFwdBtn" aria-label="Step forward one epoch" data-tip="Step forward one epoch">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M9 5v14l11-7z"/></svg>
       </button>
     </div>
     <div class="epoch-box">
@@ -220,11 +239,11 @@
     </div>
     <div class="field field-init">
       <label for="initSelect">Starting point
-        <button type="button" class="info tip-edge-right" aria-label="About the starting points" data-tip="Confidently wrong: the model starts believing the opposite of the truth (men survive, women do not; third class outranks first). Both losses face the same confident mistakes, which exposes how differently they recover. Neutral: no opinion yet (50/50 on everyone); from there both models converge to nearly the same result, so the comparison is undramatic.">i</button>
+        <button type="button" class="info tip-edge-right tip-below" aria-label="About the starting points" data-tip="Two starting points:&#10;&#8226; Neutral: no opinion yet (50/50 on everyone). Both losses learn much the same, so the comparison is undramatic.&#10;&#8226; Confidently wrong: the model begins believing the opposite of the truth (men survive, women do not; third class outranks first). This exposes how differently the two losses recover.">i</button>
       </label>
       <select id="initSelect">
-        <option value="wrong" selected>Confidently wrong (the dramatic comparison)</option>
-        <option value="neutral">Neutral (no opinion yet: 50/50 on everyone)</option>
+        <option value="neutral" selected>Neutral</option>
+        <option value="wrong">Confidently wrong</option>
       </select>
     </div>
   </div>
@@ -255,7 +274,9 @@
 
   <div class="learn-row">
     <div class="card people">
-      <h2>Four real passengers, watched live</h2>
+      <h2>Four real passengers, watched live
+        <button type="button" class="info" aria-label="About the dataset" data-tip="160 of the 891 passengers in the public Kaggle/Vanderbilt Titanic training set, sampled so that survival rates by sex and class match the full data. Fields: name, sex, age, ticket class, fare, survived. Every number on screen is computed live from these records.">i</button>
+      </h2>
       <div class="sub">Each bar is the model&rsquo;s predicted chance that this passenger survives; the notch in the middle is the 50% decision line. A tick means the model currently has this passenger on the correct side of the line.</div>
       <div class="people-grid" id="peopleGrid"></div>
       <div class="hint">Note Miss Helen Allison: a two-year-old in first class who did <em>not</em> survive. Every reasonable model gets her wrong (real data always has exceptions, and 100% accuracy is not the goal).</div>
@@ -272,29 +293,29 @@
   </div>
 
   <div class="ref-label">Reference notes (read after playing)</div>
-  <div class="ref-row">
-    <div class="card">
-      <h2>Why cross-entropy learns faster</h2>
-      <div class="sub">Take one passenger who <em>survived</em>. The x-axis is what the model currently predicts for them; the height is how hard that mistake pushes the weights. On the far left the model is <em>confidently wrong</em>: cross-entropy pushes hardest exactly there, while the quadratic signal fades to almost nothing, so the MSE model stays stuck.</div>
-      <canvas id="gradChart" width="640" height="340" aria-label="Learning signal versus predicted probability"></canvas>
-    </div>
-    <div class="card">
-      <h2>The maths (for the curious)</h2>
-      <p>The model is a single neuron (logistic regression). For each passenger it combines four facts into one number z, then squashes it into a probability p with the sigmoid:</p>
-      <div class="pipe" aria-hidden="true">
-        <span class="pbx">female?</span><span class="pbx">age</span><span class="pbx">class</span><span class="pbx">fare</span>
-        <span class="arrow">&rarr;</span><span class="pbx">weighted sum z</span>
-        <span class="arrow">&rarr;</span><span class="pbx">sigmoid</span>
-        <span class="arrow">&rarr;</span><span class="pbx out">p = chance of survival</span>
+  <div class="card">
+    <h2>Why cross-entropy learns faster</h2>
+    <div class="sub">Take one passenger who <em>survived</em>. The x-axis is what the model currently predicts for them; the height is how hard that mistake pushes the weights. On the far left the model is <em>confidently wrong</em>: cross-entropy keeps a strong push exactly there, so it corrects fast, while the quadratic (MSE) push fades to almost nothing, so that model stays stuck.</div>
+    <canvas id="gradChart" width="640" height="340" aria-label="Learning signal versus predicted probability"></canvas>
+    <details class="maths-drawer">
+      <summary>The maths (for the curious)</summary>
+      <div class="maths-body">
+        <p>The model is a single neuron (logistic regression). For each passenger it combines four facts into one number z, then squashes it into a probability p with the sigmoid:</p>
+        <div class="pipe" aria-hidden="true">
+          <span class="pbx">female?</span><span class="pbx">age</span><span class="pbx">class</span><span class="pbx">fare</span>
+          <span class="arrow">&rarr;</span><span class="pbx">weighted sum z</span>
+          <span class="arrow">&rarr;</span><span class="pbx">sigmoid</span>
+          <span class="arrow">&rarr;</span><span class="pbx out">p = chance of survival</span>
+        </div>
+        <div class="formula">z = w<sub>1</sub>&middot;female + w<sub>2</sub>&middot;age + w<sub>3</sub>&middot;class + w<sub>4</sub>&middot;fare + b &nbsp;&nbsp;&nbsp; p = 1 / (1 + e<sup>&minus;z</sup>)</div>
+        <p>Training is plain gradient descent (learning rate 0.5, full batch): after each epoch every weight moves a small step in the direction that reduces the loss. The only difference between the two models is the loss being reduced, and therefore the push each mistake sends back:</p>
+        <div class="formula f-mse">Quadratic (MSE): L = (p &minus; y)&sup2; &nbsp;&rarr;&nbsp; push on z = 2(p &minus; y)&middot;<mark>p&middot;(1 &minus; p)</mark></div>
+        <div class="fnote">The marked factor is nearly zero whenever p is near 0 or 1, including when the model is confidently <em>wrong</em> (exactly when it most needs correcting), so learning stalls.</div>
+        <div class="formula f-ce">Cross-entropy: L = &minus;[y&middot;ln p + (1 &minus; y)&middot;ln(1 &minus; p)] &nbsp;&rarr;&nbsp; push on z = p &minus; y</div>
+        <div class="fnote">Biggest exactly when the model is most wrong. That is why cross-entropy is the standard loss for classification.</div>
+        <p>Ages, classes and (log-)fares are standardised before training, which is why one learning rate suits all four weights. Every number on screen is computed live in your browser (nothing is pre-recorded).</p>
       </div>
-      <div class="formula">z = w<sub>1</sub>&middot;female + w<sub>2</sub>&middot;age + w<sub>3</sub>&middot;class + w<sub>4</sub>&middot;fare + b &nbsp;&nbsp;&nbsp; p = 1 / (1 + e<sup>&minus;z</sup>)</div>
-      <p>Training is plain gradient descent (learning rate 0.5, full batch): after each epoch every weight moves a small step in the direction that reduces the loss. The only difference between the two models is the loss being reduced, and therefore the push each mistake sends back:</p>
-      <div class="formula f-mse">Quadratic (MSE): L = (p &minus; y)&sup2; &nbsp;&rarr;&nbsp; push on z = 2(p &minus; y)&middot;<mark>p&middot;(1 &minus; p)</mark></div>
-      <div class="fnote">The marked factor is nearly zero whenever p is near 0 or 1, including when the model is confidently <em>wrong</em> (exactly when it most needs correcting), so learning stalls.</div>
-      <div class="formula f-ce">Cross-entropy: L = &minus;[y&middot;ln p + (1 &minus; y)&middot;ln(1 &minus; p)] &nbsp;&rarr;&nbsp; push on z = p &minus; y</div>
-      <div class="fnote">Biggest exactly when the model is most wrong. That is why cross-entropy is the standard loss for classification.</div>
-      <p>Ages, classes and (log-)fares are standardised before training, which is why one learning rate suits all four weights. Every number on screen is computed live in your browser (nothing is pre-recorded).</p>
-    </div>
+    </details>
   </div>
 </div>
 
@@ -601,9 +622,30 @@
     render();
   }
 
+  // Step back one epoch: drop the last recorded epoch and replay the models up
+  // to the new position. The maths is deterministic, so this rebuilds exactly
+  // the earlier state (no need to store per-epoch snapshots).
+  function stepBack() {
+    if (epoch === 0) return;
+    setPlaying(false);
+    epoch--;
+    hist.ceLoss.length = epoch + 1;
+    hist.mseLoss.length = epoch + 1;
+    hist.ceAcc.length = epoch + 1;
+    hist.mseAcc.length = epoch + 1;
+    models = freshModels(initSelect.value);
+    for (let e = 0; e < epoch; e++) {
+      trainEpoch(models.ce, X, y, LR, 'ce');
+      trainEpoch(models.mse, X, y, LR, 'mse');
+    }
+    finished = false;
+    render();
+  }
+
   // ---- DOM ----
   const playBtn = document.getElementById('playBtn');
-  const stepBtn = document.getElementById('stepBtn');
+  const stepBackBtn = document.getElementById('stepBackBtn');
+  const stepFwdBtn = document.getElementById('stepFwdBtn');
   const resetBtn = document.getElementById('resetBtn');
   const initSelect = document.getElementById('initSelect');
   const speedSlider = document.getElementById('speedSlider');
@@ -847,6 +889,8 @@
 
   function render() {
     epochNum.textContent = String(epoch);
+    stepBackBtn.disabled = epoch === 0;
+    stepFwdBtn.disabled = epoch >= MAX_EPOCHS;
     document.getElementById('ceAcc').textContent = hist.ceAcc[epoch].toFixed(1) + '%';
     document.getElementById('mseAcc').textContent = hist.mseAcc[epoch].toFixed(1) + '%';
     const ceShareEl = document.getElementById('ceLossShare');
@@ -890,7 +934,8 @@
     if (finished) { reset(); setPlaying(true); return; }
     setPlaying(!playing);
   });
-  stepBtn.addEventListener('click', () => { setPlaying(false); doEpochs(1); });
+  stepFwdBtn.addEventListener('click', () => { setPlaying(false); doEpochs(1); });
+  stepBackBtn.addEventListener('click', stepBack);
   resetBtn.addEventListener('click', () => { setPlaying(false); reset(); });
   initSelect.addEventListener('change', () => { setPlaying(false); reset(); });
   speedSlider.addEventListener('input', () => { speedVal.textContent = speedSlider.value; });
